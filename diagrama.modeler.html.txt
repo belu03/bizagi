@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagrama BPMN 2.0 Nivel 2 - Banco Unión</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .bpmn-pool { fill: #f8fafc; stroke: #334155; stroke-width: 2; }
+        .bpmn-pool-header { fill: #1e293b; font-weight: bold; fill: #ffffff; }
+        .bpmn-lane { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.5; }
+        .bpmn-lane-alt { fill: #f8fafc; stroke: #cbd5e1; stroke-width: 1.5; }
+        .bpmn-lane-header { fill: #475569; font-weight: bold; fill: #ffffff; }
+        
+        /* BPMN Elements */
+        .task-user { fill: #eff6ff; stroke: #2563eb; stroke-width: 2; rx: 8; ry: 8; }
+        .task-service { fill: #f0fdf4; stroke: #16a34a; stroke-width: 2; rx: 8; ry: 8; }
+        .task-send { fill: #fef2f2; stroke: #dc2626; stroke-width: 2; rx: 8; ry: 8; }
+        .task-receive { fill: #fff7ed; stroke: #ea580c; stroke-width: 2; rx: 8; ry: 8; }
+        .task-manual { fill: #faf5ff; stroke: #9333ea; stroke-width: 2; rx: 8; ry: 8; }
+        
+        .event-start { fill: #dcfce7; stroke: #16a34a; stroke-width: 2.5; }
+        .event-end { fill: #fee2e2; stroke: #dc2626; stroke-width: 4; }
+        .gateway { fill: #fef9c3; stroke: #ca8a04; stroke-width: 2; }
+        
+        .seq-flow { stroke: #1e293b; stroke-width: 2; fill: none; marker-end: url(#arrow-seq); }
+        .msg-flow { stroke: #2563eb; stroke-width: 2; stroke-dasharray: 6,4; fill: none; marker-end: url(#arrow-msg); marker-start: url(#circle-msg); }
+        .loop-flow { stroke: #ea580c; stroke-width: 2; stroke-dasharray: 4,3; fill: none; marker-end: url(#arrow-loop); }
+        
+        .label-text { font-family: system-ui, -apple-system, sans-serif; font-size: 11px; fill: #0f172a; text-anchor: middle; }
+        .title-text { font-family: system-ui, -apple-system, sans-serif; font-size: 13px; font-weight: 600; fill: #1e293b; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen p-4 flex flex-col items-center">
+
+    <!-- Header & Controls -->
+    <header class="w-full max-w-7xl mb-4 flex flex-col md:flex-row justify-between items-center bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg">
+        <div>
+            <h1 class="text-xl font-bold text-blue-400">Diagrama de Colaboración BPMN 2.0 - Nivel 2</h1>
+            <p class="text-xs text-slate-400">Caso Práctico: Apertura de Cuenta de Ahorro - Banco Unión S.A.</p>
+        </div>
+        <div class="flex gap-2 mt-3 md:mt-0">
+            <button onclick="resetZoom()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded text-xs font-semibold transition">Reiniciar Vista</button>
+            <button onclick="zoomIn()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded text-xs font-semibold transition">+ Acercar</button>
+            <button onclick="zoomOut()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded text-xs font-semibold transition">- Alejar</button>
+        </div>
+    </header>
+
+    <!-- Convenciones / Leyenda -->
+    <div class="w-full max-w-7xl mb-4 bg-slate-800 p-3 rounded-xl border border-slate-700 flex flex-wrap gap-4 justify-around text-xs">
+        <div class="flex items-center gap-2"><span class="w-4 h-4 rounded-full border-2 border-green-600 bg-green-100"></span> Evento Inicio</div>
+        <div class="flex items-center gap-2"><span class="w-4 h-4 rounded-full border-4 border-red-600 bg-red-100"></span> Evento Fin</div>
+        <div class="flex items-center gap-2"><span class="w-4 h-4 rotate-45 border-2 border-yellow-600 bg-yellow-100 inline-block"></span> Compuerta (GW)</div>
+        <div class="flex items-center gap-2"><span class="w-5 h-3 rounded border border-blue-600 bg-blue-50 inline-block"></span> User Task</div>
+        <div class="flex items-center gap-2"><span class="w-5 h-3 rounded border border-green-600 bg-green-50 inline-block"></span> Service Task</div>
+        <div class="flex items-center gap-2"><span class="w-5 h-3 rounded border border-purple-600 bg-purple-50 inline-block"></span> Manual Task</div>
+        <div class="flex items-center gap-2"><span class="w-6 border-t-2 border-slate-900 inline-block"></span> Flujo Secuencia</div>
+        <div class="flex items-center gap-2"><span class="w-6 border-t-2 border-dashed border-blue-500 inline-block"></span> Flujo Mensaje</div>
+    </div>
+
+    <!-- Canvas SVG del Diagrama -->
+    <div class="w-full max-w-7xl bg-white rounded-xl shadow-2xl overflow-auto border border-slate-700 p-2" id="canvas-container">
+        <svg id="bpmn-svg" viewBox="0 0 1700 950" class="w-full h-auto min-w-[1500px]">
+            <defs>
+                <!-- Marker Flujo Secuencia -->
+                <marker id="arrow-seq" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#1e293b"/>
+                </marker>
+                <!-- Marker Flujo Mensaje -->
+                <marker id="arrow-msg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                    <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="none" stroke="#2563eb" stroke-width="1.5"/>
+                </marker>
+                <marker id="circle-msg" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6">
+                    <circle cx="5" cy="5" r="3" fill="#ffffff" stroke="#2563eb" stroke-width="1.5"/>
+                </marker>
+                <!-- Marker Bucles -->
+                <marker id="arrow-loop" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#ea580c"/>
+                </marker>
+            </defs>
+
+            <!-- ================= POOL 1: CLIENTE ================= -->
+            <g id="pool-cliente">
+                <rect x="30" y="30" width="1630" height="150" class="bpmn-pool" />
+                <rect x="30" y="30" width="40" height="150" class="bpmn-pool-header" />
+                <text x="50" y="105" fill="#ffffff" font-size="14" font-weight="bold" transform="rotate(-90 50 105)" text-anchor="middle">POOL 1: CLIENTE</text>
+
+                <!-- Tareas Cliente -->
+                <g transform="translate(100, 75)">
+                    <circle cx="20" cy="30" r="16" class="event-start"/>
+                    <text x="20" y="62" class="label-text">Inicio Solicitud</text>
+                </g>
+
+                <!-- T_CLI_01 -->
+                <rect x="180" y="75" width="110" height="60" class="task-user"/>
+                <text x="235" y="100" class="label-text">Solicitar Información</text>
+                <text x="235" y="115" class="label-text" font-size="9">(T_CLI_01)</text>
+
+                <!-- T_CLI_02 -->
+                <rect x="330" y="75" width="110" height="60" class="task-manual"/>
+                <text x="385" y="98" class="label-text">Reunir Docs y</text>
+                <text x="385" y="112" class="label-text">Formulario</text>
+
+                <!-- T_CLI_03 -->
+                <rect x="480" y="75" width="110" height="60" class="task-send"/>
+                <text x="535" y="98" class="label-text">Presentar Solicitud</text>
+                <text x="535" y="112" class="label-text">(Docs completosa)</text>
+
+                <!-- T_CLI_OBS -->
+                <rect x="650" y="75" width="110" height="60" class="task-user"/>
+                <text x="705" y="98" class="label-text">Subsanar Docs</text>
+                <text x="705" y="112" class="label-text">/ Cumplimiento</text>
+
+                <!-- T_CLI_FIRM -->
+                <rect x="1160" y="75" width="110" height="60" class="task-manual"/>
+                <text x="1215" y="98" class="label-text">Revisar y Firmar</text>
+                <text x="1215" y="112" class="label-text">Contrato</text>
+
+                <!-- T_CLI_FIN -->
+                <rect x="1450" y="75" width="110" height="60" class="task-receive"/>
+                <text x="1505" y="98" class="label-text">Recibir Credenciales</text>
+                <text x="1505" y="112" class="label-text">y Nro Cuenta</text>
+
+                <circle cx="1610" cy="105" r="16" class="event-end"/>
+
+                <!-- Sequence flows en cliente -->
+                <line x1="136" y1="105" x2="180" y2="105" class="seq-flow"/>
+                <line x1="290" y1="105" x2="330" y2="105" class="seq-flow"/>
+                <line x1="440" y1="105" x2="480" y2="105" class="seq-flow"/>
+                <line x1="1270" y1="105" x2="1450" y2="105" class="seq-flow"/>
+                <line x1="1560" y1="105" x2="1594" y2="105" class="seq-flow"/>
+            </g>
+
+            <!-- ================= POOL 2: BANCO UNIÓN ================= -->
+            <g id="pool-banco">
+                <!-- Outer Pool Container -->
+                <rect x="30" y="220" width="1630" height="690" class="bpmn-pool" />
+                <rect x="30" y="220" width="40" height="690" class="bpmn-pool-header" />
+                <text x="50" y="565" fill="#ffffff" font-size="14" font-weight="bold" transform="rotate(-90 50 565)" text-anchor="middle">POOL 2: BANCO UNIÓN S.A.</text>
+
+                <!-- LANE 1: EJECUTIVO DE PLATAFORMA -->
+                <rect x="70" y="220" width="1590" height="210" class="bpmn-lane"/>
+                <rect x="70" y="220" width="30" height="210" class="bpmn-lane-header"/>
+                <text x="88" y="325" fill="#ffffff" font-size="11" font-weight="bold" transform="rotate(-90 88 325)" text-anchor="middle">Ejecutivo de Plataforma</text>
+
+                <!-- Tareas Lane 1 -->
+                <!-- Event Start -->
+                <circle cx="140" cy="305" r="16" class="event-start"/>
+                <text x="140" y="335" class="label-text">Solicitud Recibida</text>
+
+                <rect x="180" y="275" width="110" height="60" class="task-send"/>
+                <text x="235" y="298" class="label-text">Entregar Requisitos</text>
+                <text x="235" y="312" class="label-text">y Formulario</text>
+
+                <rect x="480" y="275" width="110" height="60" class="task-user"/>
+                <text x="535" y="298" class="label-text">Revisión Preliminar</text>
+                <text x="535" y="312" class="label-text">Documental</text>
+
+                <!-- GW 1: XOR Documentacion Completa -->
+                <polygon points="640,305 665,280 690,305 665,330" class="gateway"/>
+                <text x="665" y="310" font-weight="bold" text-anchor="middle" font-size="12">X</text>
+                <text x="665" y="268" class="label-text" font-weight="bold">¿Docs Completos?</text>
+
+                <!-- Path NO Docs -->
+                <rect x="610" y="360" width="110" height="45" class="task-user"/>
+                <text x="665" y="385" class="label-text" font-size="10">Notificar Corrección</text>
+
+                <!-- Path YES Docs -> Register -->
+                <rect x="730" y="275" width="110" height="60" class="task-user"/>
+                <text x="785" y="298" class="label-text">Registrar Solicitud</text>
+                <text x="785" y="312" class="label-text">en Core Bancario</text>
+
+                <rect x="1030" y="275" width="110" height="60" class="task-user"/>
+                <text x="1085" y="298" class="label-text">Generar y Enviar</text>
+                <text x="1085" y="312" class="label-text">Contrato</text>
+
+                <rect x="1310" y="275" width="110" height="60" class="task-user"/>
+                <text x="1365" y="298" class="label-text">Solicitar Creación</text>
+                <text x="1365" y="312" class="label-text">de Cuenta</text>
+
+                <rect x="1450" y="275" width="110" height="60" class="task-send"/>
+                <text x="1505" y="298" class="label-text">Entregar Cuenta</text>
+                <text x="1505" y="312" class="label-text">y Credenciales</text>
+
+                <circle cx="1610" cy="305" r="16" class="event-end"/>
+
+                <!-- LANE 2: OFICIAL DE CUMPLIMIENTO -->
+                <rect x="70" y="430" width="1590" height="160" class="bpmn-lane-alt"/>
+                <rect x="70" y="430" width="30" height="160" class="bpmn-lane-header"/>
+                <text x="88" y="510" fill="#ffffff" font-size="11" font-weight="bold" transform="rotate(-90 88 510)" text-anchor="middle">Oficial de Cumplimiento</text>
+
+                <rect x="730" y="480" width="110" height="60" class="task-user"/>
+                <text x="785" y="503" class="label-text">Verificar Risgo y</text>
+                <text x="785" y="517" class="label-text">Listas UIF / PEP</text>
+
+                <!-- GW 2: XOR Observado por Cumplimiento -->
+                <polygon points="890,510 915,485 940,510 915,535" class="gateway"/>
+                <text x="915" y="515" font-weight="bold" text-anchor="middle" font-size="12">X</text>
+                <text x="915" y="475" class="label-text" font-weight="bold">¿Observado?</text>
+
+                <rect x="1030" y="480" width="110" height="60" class="task-user"/>
+                <text x="1085" y="503" class="label-text">Aprobar Solicitud</text>
+                <text x="1085" y="517" class="label-text">Normativa</text>
+
+                <!-- LANE 3: SISTEMA BANCARIO -->
+                <rect x="70" y="590" width="1590" height="160" class="bpmn-lane"/>
+                <rect x="70" y="590" width="30" height="160" class="bpmn-lane-header"/>
+                <text x="88" y="670" fill="#ffffff" font-size="11" font-weight="bold" transform="rotate(-90 88 670)" text-anchor="middle">Sistema Bancario (Core)</text>
+
+                <rect x="730" y="640" width="110" height="60" class="task-service"/>
+                <text x="785" y="663" class="label-text">Validación Automática</text>
+                <text x="785" y="677" class="label-text">SEGIP / Restricciones</text>
+
+                <rect x="1310" y="640" width="110" height="60" class="task-service"/>
+                <text x="1365" y="663" class="label-text">Generar Nro Cuenta</text>
+                <text x="1365" y="677" class="label-text">y Registro Central</text>
+
+                <!-- GW AND Split -->
+                <polygon points="1460,670 1485,645 1510,670 1485,695" class="gateway"/>
+                <text x="1485" y="675" font-weight="bold" text-anchor="middle" font-size="16">+</text>
+
+                <rect x="1430" y="715" width="110" height="30" class="task-service"/>
+                <text x="1485" y="733" class="label-text" font-size="10">Generar Accesos Digitales</text>
+
+                <!-- LANE 4: OPERACIONES BANCARIAS -->
+                <rect x="70" y="750" width="1590" height="160" class="bpmn-lane-alt"/>
+                <rect x="70" y="750" width="30" height="160" class="bpmn-lane-header"/>
+                <text x="88" y="830" fill="#ffffff" font-size="11" font-weight="bold" transform="rotate(-90 88 830)" text-anchor="middle">Operaciones Bancarias</text>
+
+                <rect x="1430" y="800" width="110" height="50" class="task-manual"/>
+                <text x="1485" y="822" class="label-text">Activar Cuenta</text>
+                <text x="1485" y="836" class="label-text">en Core Financiero</text>
+
+                <!-- GW AND Join -->
+                <polygon points="1560,670 1585,645 1610,670 1585,695" class="gateway"/>
+                <text x="1585" y="675" font-weight="bold" text-anchor="middle" font-size="16">+</text>
+
+                <!-- Sequence flows dentro de Banco Union -->
+                <line x1="156" y1="305" x2="180" y2="305" class="seq-flow"/>
+                <line x1="590" y1="305" x2="640" y2="305" class="seq-flow"/>
+                
+                <!-- GW1 paths -->
+                <line x1="665" y1="330" x2="665" y2="360" class="seq-flow"/> <!-- NO -->
+                <text x="675" y="348" font-size="10" font-weight="bold" fill="#dc2626">NO</text>
+                
+                <line x1="690" y1="305" x2="730" y2="305" class="seq-flow"/> <!-- YES -->
+                <text x="705" y="298" font-size="10" font-weight="bold" fill="#16a34a">SÍ</text>
+
+                <!-- Flow to System / Compliance -->
+                <line x1="785" y1="335" x2="785" y2="640" class="seq-flow"/>
+                <line x1="785" y1="640" x2="785" y2="540" class="seq-flow"/>
+                <line x1="785" y1="480" x2="785" y2="430" class="seq-flow"/>
+                
+                <!-- Compliance GW2 -->
+                <line x1="840" y1="510" x2="890" y2="510" class="seq-flow"/>
+                <line x1="940" y1="510" x2="1030" y2="510" class="seq-flow"/>
+                <text x="965" y="500" font-size="10" font-weight="bold" fill="#16a34a">NO OBS</text>
+
+                <line x1="1085" y1="480" x2="1085" y2="335" class="seq-flow"/>
+                <line x1="1140" y1="305" x2="1310" y2="305" class="seq-flow"/>
+                <line x1="1365" y1="335" x2="1365" y2="640" class="seq-flow"/>
+
+                <!-- System creation to AND Split -->
+                <line x1="1420" y1="670" x2="1460" y2="670" class="seq-flow"/>
+                <line x1="1485" y1="695" x2="1485" y2="715" class="seq-flow"/> <!-- Branch Digital -->
+                <path d="M 1485 695 L 1485 825 L 1430 825" class="seq-flow"/> <!-- Branch Operaciones -->
+
+                <!-- AND Join connections -->
+                <line x1="1540" y1="730" x2="1585" y2="730" class="seq-flow"/>
+                <line x1="1540" y1="825" x2="1585" y2="825" class="seq-flow"/>
+                <line x1="1585" y1="645" x2="1505" y2="335" class="seq-flow"/>
+                <line x1="1560" y1="305" x2="1594" y2="305" class="seq-flow"/>
+
+            </g>
+
+            <!-- ================= INTER-POOL MESSAGE FLOWS ================= -->
+            <!-- FM-01: Solicitar Informacion -->
+            <path d="M 235 135 L 235 200 L 140 200 L 140 289" class="msg-flow"/>
+            <text x="180" y="190" class="label-text" fill="#2563eb">FM-01: Consulta Requisitos</text>
+
+            <!-- FM-02: Entrega Requisitos -->
+            <path d="M 235 275 L 235 135" class="msg-flow"/>
+
+            <!-- FM-03: Presentación de Solicitud -->
+            <path d="M 535 135 L 535 275" class="msg-flow"/>
+            <text x="545" y="200" class="label-text" fill="#2563eb">FM-03: Solicitud + Docs</text>
+
+            <!-- FM-04: Notificación de Observación Documental -->
+            <path d="M 665 405 L 665 440 L 705 440 L 705 135" class="loop-flow"/>
+            <text x="715" y="170" class="label-text" fill="#ea580c">FM-04: Obs. Documental (Bucle)</text>
+
+            <!-- FM-05: Enviar Contrato -->
+            <path d="M 1085 275 L 1085 200 L 1215 200 L 1215 135" class="msg-flow"/>
+            <text x="1145" y="190" class="label-text" fill="#2563eb">FM-05: Contrato para Firma</text>
+
+            <!-- FM-06: Devolución Contrato Firmado -->
+            <path d="M 1215 135 L 1215 200 L 1365 200 L 1365 275" class="msg-flow"/>
+            <text x="1275" y="215" class="label-text" fill="#2563eb">FM-06: Contrato Firmado</text>
+
+            <!-- FM-07: Entrega final credenciales -->
+            <path d="M 1505 275 L 1505 135" class="msg-flow"/>
+            <text x="1515" y="190" class="label-text" fill="#2563eb">FM-07: Nro Cuenta + Accesos</text>
+        </svg>
+    </div>
+
+    <script>
+        let zoomLevel = 1;
+        const svg = document.getElementById('bpmn-svg');
+
+        function zoomIn() {
+            zoomLevel += 0.15;
+            svg.style.transform = `scale(${zoomLevel})`;
+            svg.style.transformOrigin = 'top left';
+        }
+
+        function zoomOut() {
+            if (zoomLevel > 0.5) {
+                zoomLevel -= 0.15;
+                svg.style.transform = `scale(${zoomLevel})`;
+                svg.style.transformOrigin = 'top left';
+            }
+        }
+
+        function resetZoom() {
+            zoomLevel = 1;
+            svg.style.transform = 'scale(1)';
+        }
+    </script>
+</body>
+</html>
+```eof
+
+He generado el archivo con la representación gráfica e interactiva del **Diagrama de Colaboración BPMN 2.0 (Nivel 2)** para el proceso de **Apertura de Cuenta de Ahorro del Banco Unión**.
+
+### Características visuales del diagrama generado:
+1. **Piscina Externa (Pool 1 - Cliente):** Muestra los eventos de interacción directa, presentación de respaldos, subsanación y firma manuscrita de contratos.
+2. **Piscina Principal (Pool 2 - Banco Unión S.A.):** Dividida de manera horizontal en sus **4 Lanes formales**:
+   - *Ejecutivo de Plataforma (Front-office)*
+   - *Oficial de Cumplimiento (Control anti-lavado/UIF)*
+   - *Sistema Bancario Core (Validaciones automatizadas)*
+   - *Operaciones Bancarias (Activación financiera)*
+3. **Flujos Diferenciados:**
+   - **Líneas Continuas (Negras):** Flujos de Secuencia dentro de cada piscina.
+   - **Líneas Punteadas Azules (FM-01 a FM-07):** Flujos de Mensaje entre el Cliente y el Banco.
+   - **Líneas Naranjas Punteadas:** Bucles de retorno para casos alternativos (documentación incompleta o aclaraciones normativas).
+4. **Compuertas Lógicas:** Muestra explícitamente las decisiones exclusivas ($XOR$) y la activación paralela ($AND$).
+
+Puedes abrir este archivo directamente en cualquier navegador web para acercar, alejar o inspeccionar todos los elementos visuales.
